@@ -130,6 +130,7 @@
 #define VMOVUPS(_0, _1) ASM(vmovups _1, _0)
 #define VMOVAPD(_0, _1) ASM(vmovapd _1, _0)
 #define VMOVUPD(_0, _1) ASM(vmovupd _1, _0)
+#define VMOVNTPD(_0, _1) ASM(vmovntd _1, _0)
 #define VBROADCASTSS(_0, _1) ASM(vbroadcastss _1, _0)
 #define VBROADCASTSD(_0, _1) ASM(vbroadcastsd _1, _0)
 #define VPBROADCASTD(_0, _1) ASM(vpbroadcastd _1, _0)
