@@ -37,6 +37,7 @@
 void bli_cntx_init_icelake( cntx_t* cntx )
 {
 	blksz_t blkszs[ BLIS_NUM_BLKSZS ];
+	blksz_t thresh[ BLIS_NUM_THRESH ];
 
 	// Set default kernel blocksizes and functions.
 	bli_cntx_init_icelake_ref( cntx );
@@ -47,10 +48,12 @@ void bli_cntx_init_icelake( cntx_t* cntx )
 	// their storage preferences.
 	bli_cntx_set_l3_nat_ukrs
 	(
-	  2,
+	  4,
 	  // gemm
 	  BLIS_GEMM_UKR,       BLIS_FLOAT ,   bli_sgemm_skx_asm_32x12_l2,   FALSE,
 	  BLIS_GEMM_UKR,       BLIS_DOUBLE,   bli_dgemm_skx_asm_16x14,      FALSE,
+	  BLIS_GEMM_UKR,       BLIS_SCOMPLEX, bli_cgemm_haswell_asm_3x8,    TRUE,
+	  BLIS_GEMM_UKR,       BLIS_DCOMPLEX, bli_zgemm_haswell_asm_3x4,    TRUE,
 	  cntx
 	);
 
@@ -101,14 +104,14 @@ void bli_cntx_init_icelake( cntx_t* cntx )
 
 	// Initialize level-3 blocksize objects with architecture-specific values.
 	//                                           s      d      c      z
-	bli_blksz_init_easy( &blkszs[ BLIS_MR ],    32,    16,    -1,    -1 );
-	bli_blksz_init_easy( &blkszs[ BLIS_NR ],    12,    14,    -1,    -1 );
-	bli_blksz_init_easy( &blkszs[ BLIS_MC ],   480,   240,    -1,    -1 );
-	bli_blksz_init     ( &blkszs[ BLIS_KC ],   384,   384,    -1,    -1,
+	bli_blksz_init_easy( &blkszs[ BLIS_MR ],    32,    16,     3,     3 );
+	bli_blksz_init_easy( &blkszs[ BLIS_NR ],    12,    14,     8,     4 );
+	bli_blksz_init_easy( &blkszs[ BLIS_MC ],   480,   240,    75,   192 );
+	bli_blksz_init_easy( &blkszs[ BLIS_NC ],  3072,  3752,   256,   256 );
+	bli_blksz_init     ( &blkszs[ BLIS_KC ],   384,   384,    -1,    -1 ,
 	                                           480,   480,    -1,    -1 );
-	bli_blksz_init_easy( &blkszs[ BLIS_NC ],  3072,  3752,    -1,    -1 );
-	bli_blksz_init_easy( &blkszs[ BLIS_AF ],     8,     8,    -1,    -1 );
-	bli_blksz_init_easy( &blkszs[ BLIS_DF ],     8,     8,    -1,    -1 );
+	bli_blksz_init_easy( &blkszs[ BLIS_AF ],     8,     8,     8,     8 );
+	bli_blksz_init_easy( &blkszs[ BLIS_DF ],     8,     8,     8,     8 );
 
 	// Update the context with the current architecture's register and cache
 	// blocksizes (and multiples) for native execution.
