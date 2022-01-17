@@ -35,6 +35,9 @@
 
 #include "blis.h"
 
+#warning HACK2
+#define BLIS_TREE_BARRIER
+
 #ifdef BLIS_ENABLE_OPENMP
 
 thrcomm_t* bli_thrcomm_create( rntm_t* rntm, dim_t n_threads )

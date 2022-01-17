@@ -35,6 +35,9 @@
 
 #include "blis.h"
 
+#warning HACK3
+#define BLIS_TREE_BARRIER
+
 void* bli_thrcomm_bcast
      (
        dim_t      id,
@@ -52,6 +55,8 @@ void* bli_thrcomm_bcast
 
 	return object;
 }
+
+#ifndef BLIS_TREE_BARRIER
 
 // Use __sync_* builtins (assumed available) if __atomic_* ones are not present.
 #ifndef __ATOMIC_RELAXED
@@ -103,16 +108,20 @@ void bli_thrcomm_barrier_atomic( dim_t t_id, thrcomm_t* comm )
 		// atomically toggle the barrier sense variable. This will signal to
 		// the other threads (which are spinning in the branch elow) that it
 		// is now safe to exit the barrier.
-		comm->barrier_threads_arrived = 0;
+		//comm->barrier_threads_arrived = 0;
+                __atomic_store_n( &comm->barrier_threads_arrived, 0, __ATOMIC_RELAXED );
 		__atomic_fetch_xor( &comm->barrier_sense, 1, __ATOMIC_RELEASE );
 	}
 	else
 	{
+                sched_yield();
 		// If the current thread is NOT the last thread to have arrived, then
 		// it spins on the sense variable until that sense variable changes at
 		// which time these threads will exit the barrier.
-		while ( __atomic_load_n( &comm->barrier_sense, __ATOMIC_ACQUIRE ) == orig_sense )
-			; // Empty loop body.
+		while ( __atomic_load_n( &comm->barrier_sense, __ATOMIC_ACQUIRE ) == orig_sense ) {
+                    sched_yield();
+                }
 	}
 }
 
+#endif

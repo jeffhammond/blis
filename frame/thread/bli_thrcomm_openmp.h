@@ -36,6 +36,9 @@
 #ifndef BLIS_THRCOMM_OPENMP_H
 #define BLIS_THRCOMM_OPENMP_H
 
+#warning HACK
+#define BLIS_TREE_BARRIER
+
 // Define thrcomm_t for situations when OpenMP multithreading is enabled.
 #ifdef BLIS_ENABLE_OPENMP
 
