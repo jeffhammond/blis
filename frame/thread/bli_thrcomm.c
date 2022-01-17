@@ -35,9 +35,6 @@
 
 #include "blis.h"
 
-#warning HACK3
-#define BLIS_TREE_BARRIER
-
 void* bli_thrcomm_bcast
      (
        dim_t      id,

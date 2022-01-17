@@ -38,9 +38,6 @@
 
 // -- THREADING PARAMTERS ------------------------------------------------------
 
-#define BLIS_TREE_BARRIER
-#define BLIS_TREE_BARRIER_ARITY        4
-
 
 // -- MEMORY ALLOCATION --------------------------------------------------------
 
