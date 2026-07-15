@@ -981,8 +981,8 @@ typedef enum arch_e
 	BLIS_ARCH_A64FX,
 
 	// NVIDIA GB10 (Cortex-X925 6 pipes / Cortex-A725 2 pipes x 128-bit)
-	BLIS_ARCH_GB10,
-	BLIS_ARCH_A725,
+	BLIS_ARCH_CORTEXX925,
+	BLIS_ARCH_CORTEXA725,
 	// ARM-NEON (4 pipes x 128-bit vectors)
 	BLIS_ARCH_ALTRAMAX,
 	BLIS_ARCH_ALTRA,

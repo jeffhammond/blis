@@ -35,7 +35,7 @@
 
 # Declare the name of the current configuration and add it to the
 # running list of configurations included by common.mk.
-THIS_CONFIG    := a725
+THIS_CONFIG    := cortexa725
 #CONFIGS_INCL   += $(THIS_CONFIG)
 
 #

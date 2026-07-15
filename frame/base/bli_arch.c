@@ -259,11 +259,11 @@ arch_t bli_arch_query_id_impl( void )
 		id = BLIS_ARCH_A64FX;
 		#endif
 
-		#ifdef BLIS_FAMILY_GB10
-		id = BLIS_ARCH_GB10;
+		#ifdef BLIS_FAMILY_CORTEXX925
+		id = BLIS_ARCH_CORTEXX925;
 		#endif
-		#ifdef BLIS_FAMILY_A725
-		id = BLIS_ARCH_A725;
+		#ifdef BLIS_FAMILY_CORTEXA725
+		id = BLIS_ARCH_CORTEXA725;
 		#endif
 		#ifdef BLIS_FAMILY_ALTRAMAX
 		id = BLIS_ARCH_ALTRAMAX;
@@ -372,8 +372,8 @@ static const char* config_name[ BLIS_NUM_ARCHS ] =
     "armsve",
     "a64fx",
 
-	"gb10",
-	"a725",
+	"cortexx925",
+	"cortexa725",
 	"altramax",
 	"altra",
     "firestorm",

@@ -1206,17 +1206,17 @@ static uint32_t get_coretype
 			{
 				// NVIDIA GB10: Cortex-X925 (perf) + Cortex-A725 (eff).
 				// With a dedicated a725 config, the efficiency cores select it;
-				// otherwise both parts fall to gb10.
-#ifdef BLIS_CONFIG_GB10
+				// otherwise both parts fall to cortexx925.
+#ifdef BLIS_CONFIG_CORTEXX925
 				case ARM_CPU_PART_CORTEX_X925:
-					return BLIS_ARCH_GB10;
+					return BLIS_ARCH_CORTEXX925;
 #endif
-#ifdef BLIS_CONFIG_A725
+#ifdef BLIS_CONFIG_CORTEXA725
 				case ARM_CPU_PART_CORTEX_A725:
-					return BLIS_ARCH_A725;
-#elif defined(BLIS_CONFIG_GB10)
+					return BLIS_ARCH_CORTEXA725;
+#elif defined(BLIS_CONFIG_CORTEXX925)
 				case ARM_CPU_PART_CORTEX_A725:
-					return BLIS_ARCH_GB10;
+					return BLIS_ARCH_CORTEXX925;
 #endif
 #ifdef BLIS_CONFIG_CORTEXA57
 				case ARM_CPU_PART_CORTEX_A57:

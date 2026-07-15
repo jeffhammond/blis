@@ -34,12 +34,12 @@
 
 #include "blis.h"
 
-void bli_cntx_init_gb10( cntx_t* cntx )
+void bli_cntx_init_cortexx925( cntx_t* cntx )
 {
 	blksz_t blkszs[ BLIS_NUM_BLKSZS ];
 
 	// Set default kernel blocksizes and functions.
-	bli_cntx_init_gb10_ref( cntx );
+	bli_cntx_init_cortexx925_ref( cntx );
 
 	// -------------------------------------------------------------------------
 

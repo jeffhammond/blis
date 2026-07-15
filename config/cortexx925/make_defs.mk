@@ -35,7 +35,7 @@
 
 # Declare the name of the current configuration and add it to the
 # running list of configurations included by common.mk.
-THIS_CONFIG    := gb10
+THIS_CONFIG    := cortexx925
 #CONFIGS_INCL   += $(THIS_CONFIG)
 
 #
@@ -57,19 +57,19 @@ endif
 ifeq ($(DEBUG_TYPE),noopt)
 COPTFLAGS      := -O0
 else
-COPTFLAGS      := -O3 -mcpu=gb10
+COPTFLAGS      := -O3 -mcpu=cortex-x925
 endif
 
 # Flags specific to optimized kernels.
 # GB10 = 10x Cortex-X925 + 10x Cortex-A725 (Armv9.2-A, NEON 128b, SVE2 VL=128b).
-# GCC 16 recognizes -mcpu=gb10 (== -mcpu=native here). NEON asm micro-kernels are
+# GCC 16 recognizes -mcpu=cortex-x925 (== -mcpu=native here). NEON asm micro-kernels are
 # used because SVE offers no width advantage at VL=128b.
 CKOPTFLAGS     := $(COPTFLAGS) -O3 -ftree-vectorize
 ifeq ($(CC_VENDOR),gcc)
-CKVECFLAGS     := -mcpu=gb10
+CKVECFLAGS     := -mcpu=cortex-x925
 else
 ifeq ($(CC_VENDOR),clang)
-CKVECFLAGS     := -mcpu=gb10
+CKVECFLAGS     := -mcpu=cortex-x925
 else
 $(error gcc or clang is required for this configuration.)
 endif
