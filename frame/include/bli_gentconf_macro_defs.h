@@ -128,7 +128,7 @@
 #define INSERT_GENTCONF_A64FX
 #endif
 
-// -- ARM-NEON (4 pipes x 128-bit vectors) --
+// -- NVIDIA GB10 (Cortex-X925 6 pipes / Cortex-A725 2 pipes x 128-bit) --
 #ifdef BLIS_CONFIG_GB10
 #define INSERT_GENTCONF_GB10 GENTCONF( GB10, gb10 )
 #else
@@ -139,6 +139,8 @@
 #else
 #define INSERT_GENTCONF_A725
 #endif
+
+// -- ARM-NEON (4 pipes x 128-bit vectors) --
 #ifdef BLIS_CONFIG_ALTRA
 #define INSERT_GENTCONF_ALTRA GENTCONF( ALTRA, altra )
 #else
