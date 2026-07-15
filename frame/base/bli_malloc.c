@@ -120,24 +120,35 @@ void* bli_hugepage_malloc( size_t size )
 {
 	if ( size == 0 ) return NULL;
 
+	// Resolve environment controls once per process (see coding note: never
+	// call getenv() repeatedly on a hot path).
+	//   BLI_HP_DEBUG   - trace each allocation and the page size chosen.
+	//   BLI_HP_DISABLE - force the plain malloc() path (huge pages off).
+	static int dbg = -1, off = -1;
+	if ( dbg < 0 ) dbg = ( getenv( "BLI_HP_DEBUG"   ) != NULL );
+	if ( off < 0 ) off = ( getenv( "BLI_HP_DISABLE" ) != NULL );
+
 	size_t need = size + BLI_HP_HDR;
 
 	// 1 GiB explicit huge pages for large requests.
-	if ( size >= BLI_HP_1GB )
+	if ( !off && size >= BLI_HP_1GB )
 	{
 		size_t len  = bli_hp_round_up( need, BLI_HP_1GB );
 		void*  base = bli_hp_try_hugetlb( len, MAP_HUGE_1GB );
+		if ( dbg ) fprintf( stderr, "[hp] size=%zu -> 1GB %s\n", size, base?"OK":"FAIL" );
 		if ( base ) return bli_hp_finish( base, len, BLI_HP_MMAP );
 	}
 	// 2 MiB explicit huge pages otherwise.
-	if ( size >= BLI_HP_2MB )
+	if ( !off && size >= BLI_HP_2MB )
 	{
 		size_t len  = bli_hp_round_up( need, BLI_HP_2MB );
 		void*  base = bli_hp_try_hugetlb( len, MAP_HUGE_2MB );
+		if ( dbg ) fprintf( stderr, "[hp] size=%zu -> 2MB %s\n", size, base?"OK":"FAIL" );
 		if ( base ) return bli_hp_finish( base, len, BLI_HP_MMAP );
 	}
 	// Fallback: ordinary malloc (no regression vs. BLIS's default pool).
 	{
+		if ( dbg ) fprintf( stderr, "[hp] size=%zu -> malloc\n", size );
 		void* base = malloc( need );
 		if ( base == NULL ) return NULL;
 		return bli_hp_finish( base, 0, BLI_HP_MALLOC );
