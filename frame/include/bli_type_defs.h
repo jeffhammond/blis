@@ -981,6 +981,7 @@ typedef enum arch_e
 	BLIS_ARCH_A64FX,
 
 	// ARM-NEON (4 pipes x 128-bit vectors)
+	BLIS_ARCH_GB10,
 	BLIS_ARCH_ALTRAMAX,
 	BLIS_ARCH_ALTRA,
 	BLIS_ARCH_FIRESTORM,

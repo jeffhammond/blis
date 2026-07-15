@@ -1154,6 +1154,9 @@ static uint32_t get_coretype
 #define ARM_CPU_PART_CORTEX_V1 0xd40
 #define ARM_CPU_PART_CORTEX_N2 0xd49
 #define ARM_CPU_PART_CORTEX_R82 0xd15
+	//   NVIDIA GB10 (DGX Spark) clusters:
+#define ARM_CPU_PART_CORTEX_X925 0xd85
+#define ARM_CPU_PART_CORTEX_A725 0xd87
 	//
 	// APM_CPU_PART_POTENZA 0x000
 	//
@@ -1201,6 +1204,12 @@ static uint32_t get_coretype
 		case ARM_CPU_IMP_ARM:		// ARM
 			switch (part)
 			{
+#ifdef BLIS_CONFIG_GB10
+				// NVIDIA GB10: Cortex-X925 (perf) + Cortex-A725 (eff).
+				case ARM_CPU_PART_CORTEX_X925:
+				case ARM_CPU_PART_CORTEX_A725:
+					return BLIS_ARCH_GB10;
+#endif
 #ifdef BLIS_CONFIG_CORTEXA57
 				case ARM_CPU_PART_CORTEX_A57:
 					return BLIS_ARCH_CORTEXA57;

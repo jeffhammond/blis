@@ -1,0 +1,8 @@
+# compiled benchmark binaries
+bench_blis
+bench_nvpl
+bench_openblas
+fp_peak
+fp_peak_s
+*.o
+perf.txt
