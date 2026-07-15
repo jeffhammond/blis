@@ -8,3 +8,6 @@ fp_peak_s
 perf.txt
 stream
 bench_blis_hp
+gemm_fuzz
+l12_fuzz
+l3_fuzz
