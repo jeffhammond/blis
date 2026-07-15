@@ -40,6 +40,72 @@
 // Define BLAS-like interfaces with typed operands.
 //
 
+// Optional OpenMP threading for the asumv reduction (memory-bound, and BLIS
+// otherwise runs it single-threaded). Enabled via BLIS_ENABLE_L1_OPENMP.
+#ifdef BLIS_ENABLE_L1_OPENMP
+#include <omp.h>
+#ifndef BLIS_L1_MT_THRESHOLD
+#define BLIS_L1_MT_THRESHOLD 200000
+#endif
+#ifndef BLIS_L1_MT_MAX
+#define BLIS_L1_MT_MAX 256
+#endif
+#ifndef BLI_UTIL_MT_HELPERS
+#define BLI_UTIL_MT_HELPERS
+BLIS_INLINE bool bli_util_mt_ok( dim_t n )
+{
+	return ( n >= ( dim_t )BLIS_L1_MT_THRESHOLD ) &&
+	       ( omp_get_active_level() == 0 ) &&
+	       ( omp_get_max_threads() <= BLIS_L1_MT_MAX );
+}
+BLIS_INLINE void bli_util_range( dim_t n, dim_t* s, dim_t* l )
+{
+	const dim_t nt = omp_get_num_threads(), tid = omp_get_thread_num();
+	const dim_t b = n / nt, r = n % nt;
+	*s = tid * b + ( tid < r ? tid : r );
+	*l = b + ( tid < r ? 1 : 0 );
+}
+#endif
+#endif
+
+// Serial accumulation of sum(|re|+|im|) over [s,e) into acc.
+#define BLIS_ASUMV_RANGE( ch, chr, ctype, ctype_r, x, incx, s, e, acc ) \
+{ \
+	for ( dim_t i_ = (s); i_ < (e); ++i_ ) { \
+		ctype*  c_ = (x) + i_*(incx); \
+		ctype_r r_, im_; \
+		bli_tgets( ch,chr, *c_, r_, im_ ); \
+		r_ = bli_fabs( r_ ); im_ = bli_fabs( im_ ); \
+		bli_tadds( chr,chr,chr, r_,  acc ); \
+		bli_tadds( chr,chr,chr, im_, acc ); \
+	} \
+}
+
+#ifdef BLIS_ENABLE_L1_OPENMP
+#define BLIS_ASUMV_ACCUM( ch, chr, ctype, ctype_r, n, x, incx, absum ) \
+{ \
+	if ( bli_util_mt_ok( n ) ) \
+	{ \
+		ctype_r parts_[ BLIS_L1_MT_MAX ]; dim_t nt_ = 1; \
+		_Pragma( "omp parallel" ) \
+		{ \
+			const dim_t tid_ = omp_get_thread_num(); \
+			dim_t s_, l_; bli_util_range( (n), &s_, &l_ ); \
+			if ( tid_ == 0 ) nt_ = omp_get_num_threads(); \
+			ctype_r pa_; bli_tset0s( chr, pa_ ); \
+			BLIS_ASUMV_RANGE( ch, chr, ctype, ctype_r, x, incx, s_, s_+l_, pa_ ); \
+			parts_[ tid_ ] = pa_; \
+		} \
+		for ( dim_t t_ = 0; t_ < nt_; ++t_ ) bli_tadds( chr,chr,chr, parts_[ t_ ], absum ); \
+	} \
+	else \
+		BLIS_ASUMV_RANGE( ch, chr, ctype, ctype_r, x, incx, 0, (n), absum ); \
+}
+#else
+#define BLIS_ASUMV_ACCUM( ch, chr, ctype, ctype_r, n, x, incx, absum ) \
+	BLIS_ASUMV_RANGE( ch, chr, ctype, ctype_r, x, incx, 0, (n), absum )
+#endif
+
 #undef  GENTFUNCR
 #define GENTFUNCR( ctype, ctype_r, ch, chr, varname ) \
 \
@@ -52,30 +118,10 @@ void PASTEMAC(ch,varname) \
        rntm_t*  rntm  \
      ) \
 { \
-	ctype*  chi1; \
-	ctype_r chi1_r; \
-	ctype_r chi1_i; \
 	ctype_r absum; \
-	dim_t   i; \
-\
-	/* Initialize the absolute sum accumulator to zero. */ \
 	bli_tset0s( chr, absum ); \
 \
-	for ( i = 0; i < n; ++i ) \
-	{ \
-		chi1 = x + (i  )*incx; \
-\
-		/* Get the real and imaginary components of chi1. */ \
-		bli_tgets( ch,chr, *chi1, chi1_r, chi1_i ); \
-\
-		/* Replace chi1_r and chi1_i with their absolute values. */ \
-		chi1_r = bli_fabs( chi1_r ); \
-		chi1_i = bli_fabs( chi1_i ); \
-\
-		/* Accumulate the real and imaginary components into absum. */ \
-		bli_tadds( chr,chr,chr, chi1_r, absum ); \
-		bli_tadds( chr,chr,chr, chi1_i, absum ); \
-	} \
+	BLIS_ASUMV_ACCUM( ch, chr, ctype, ctype_r, n, x, incx, absum ); \
 \
 	/* Store the final value of absum to the output variable. */ \
 	bli_tcopys( chr,chr, absum, *asum ); \
