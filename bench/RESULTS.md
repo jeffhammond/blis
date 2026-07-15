@@ -10,6 +10,43 @@ All numbers GFLOP/s, pinned to the 10 X925 P-cores (`taskset -c 5-9,15-19`,
   DGEMM ceiling (~88%) is per-cluster L3 bandwidth + the 128-bit vector width's
   arithmetic intensity (verified: identical per-core cache/stall counts 1→10 cores).
 
+## Performance sweep (10× X925, GFLOP/s, default auto-threading)
+Full size sweep vs NVPL / OpenBLAS. "win" = fastest of the three.
+
+DGEMM square (peak 898): BLIS wins ≥256; NVPL/OpenBLAS win the tiny end.
+```
+ size    BLIS   %pk    NVPL  OpenBLAS  win
+   32    33.3   3.7%   18.6    53.2   openblas
+   64    55.4   6.2%   88.6    60.5   nvpl
+  128   232.2  25.9%  241.2   182.6   nvpl
+  256   459.9  51.2%  451.3   236.0   BLIS
+  512   633.9  70.6%  602.4   400.1   BLIS
+ 1024   711.9  79.3%  695.9   392.8   BLIS
+ 2048   719.8  80.2%  697.6   499.4   BLIS
+ 4096   746.0  83.1%  714.6   550.1   BLIS
+ 8192   753.8  83.9%  716.7   541.2   BLIS
+```
+SGEMM square (peak 1787): BLIS wins ≥1024; small SGEMM improved by the
+precision-aware threading threshold (64³ 35→86).
+```
+ size    BLIS   %pk    NVPL  OpenBLAS  win
+   64    86.2   4.8%  117.5   118.7   openblas
+  256   681.3  38.1%  869.8   515.0   nvpl
+  512  1318.1  73.8% 1383.3   739.8   nvpl
+ 1024  1531.4  85.7% 1509.7   559.0   BLIS
+ 4096  1584.8  88.7% 1551.5  1151.1   BLIS
+ 8192  1611.4  90.2% 1580.8  1165.3   BLIS
+```
+DGEMM rectangular — **BLIS wins every case**:
+```
+ rank-k 4096²×K:  K=8→135, 16→270, 32→488, 64→669, 128→715, 256→756, 512→748  (all > NVPL)
+ tall  M×256×256: 1k→652, 4k→672, 16k→734, 64k→710
+ wide  256×N×256: 1k→639, 4k→631, 16k→667, 64k→666
+ deep  256²×K:    1k→513, 4k→521, 16k→489
+```
+(Forced BLIS_JC_NT/IC_NT gives only ~1.5% over auto and is size-dependent, so
+auto is kept as the default.)
+
 ## GEMM — square (DGEMM)
 | size | BLIS | NVPL | OpenBLAS |
 |---|---|---|---|
