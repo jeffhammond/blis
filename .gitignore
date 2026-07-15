@@ -58,3 +58,6 @@ GTAGS
 
 # Mac DS.store files
 .DS_Store
+
+# Local scratch: benchmark drivers, results, and correctness fuzzers
+/bench/

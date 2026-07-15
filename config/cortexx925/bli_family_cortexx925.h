@@ -5,7 +5,6 @@
    libraries.
 
    Copyright (C) 2014, The University of Texas at Austin
-   Copyright (C) 2018 - 2019, Advanced Micro Devices, Inc.
 
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are
@@ -33,38 +32,45 @@
 
 */
 
-// Typedef function pointer types for malloc() and free() substitutes.
-//typedef void* (*malloc_ft) ( size_t size );
-//typedef void  (*free_ft)   ( void*  p    );
+//#ifndef BLIS_FAMILY_H
+//#define BLIS_FAMILY_H
 
-// -----------------------------------------------------------------------------
+
+// -- MEMORY ALLOCATION --------------------------------------------------------
+
+#define BLIS_SIMD_ALIGN_SIZE           16
+
 
 #if 0
-BLIS_EXPORT_BLIS void* bli_malloc_pool( size_t size );
-BLIS_EXPORT_BLIS void   bli_free_pool( void* p );
+// -- LEVEL-3 MICRO-KERNEL CONSTANTS -------------------------------------------
+
+#define BLIS_SGEMM_UKERNEL             bli_sgemm_opt_8x12
+#define BLIS_DEFAULT_MR_S              8
+#define BLIS_DEFAULT_NR_S              12
+#define BLIS_DEFAULT_MC_S              120 //1536 //336 //416 // 1280 //160 // 160 // 160 //2048 //336 
+#define BLIS_DEFAULT_KC_S              640 //1536 //336 //704 //1280 //672 //528 // 856 //2048 //528 
+#define BLIS_DEFAULT_NC_S              3072
+
+#define BLIS_DGEMM_UKERNEL             bli_dgemm_opt_6x8
+#define BLIS_DEFAULT_MR_D              6
+#define BLIS_DEFAULT_NR_D              8
+#define BLIS_DEFAULT_MC_D              120 //1536 //160 //80 //176 
+#define BLIS_DEFAULT_KC_D              240 //1536 //304 //336 //368 
+#define BLIS_DEFAULT_NC_D              3072
+
+#define BLIS_DEFAULT_MR_C              8
+#define BLIS_DEFAULT_NR_C              4
+#define BLIS_DEFAULT_MC_C              64
+#define BLIS_DEFAULT_KC_C              128
+#define BLIS_DEFAULT_NC_C              4096
+
+#define BLIS_DEFAULT_MR_Z              8
+#define BLIS_DEFAULT_NR_Z              4
+#define BLIS_DEFAULT_MC_Z              64
+#define BLIS_DEFAULT_KC_Z              128
+#define BLIS_DEFAULT_NC_Z              4096
 #endif
 
-void* bli_malloc_intl( size_t size, err_t* r_val );
-void* bli_calloc_intl( size_t size, err_t* r_val );
-void  bli_free_intl( void* p );
 
-BLIS_EXPORT_BLIS void* bli_malloc_user( size_t size, err_t* r_val );
-BLIS_EXPORT_BLIS void  bli_free_user( void* p );
-
-// -----------------------------------------------------------------------------
-
-void* bli_fmalloc_align( malloc_ft f, size_t size, size_t align_size, err_t* r_val );
-void  bli_ffree_align( free_ft f, void* p );
-
-void* bli_fmalloc_noalign( malloc_ft f, size_t size, err_t* r_val );
-void  bli_ffree_noalign( free_ft f, void* p );
-
-#ifdef BLIS_ENABLE_HUGEPAGE_POOL
-// Huge-page-backed pool allocator (see bli_malloc.c). malloc()/free()-compatible.
-void* bli_hugepage_malloc( size_t size );
-void  bli_hugepage_free  ( void*  p    );
-#endif
-
-void  bli_fmalloc_align_check( malloc_ft f, size_t size, size_t align_size );
-void  bli_fmalloc_post_check( void* p );
+//#endif
 
