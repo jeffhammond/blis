@@ -48,14 +48,19 @@ need hand-written tiny-GEMM kernels).
 | trsm | **723** | 663 | 579 |
 | trmm | **742** | 683 | 581 |
 
-## Non-GEMM — level-1/2 (now multithreaded for gb10; were single-threaded → 3–4× slower)
-| op | BLIS | NVPL | OpenBLAS |
-|---|---|---|---|
-| gemv 4000² | 22 | **23** | 18 |
-| gemv 8000² | **22** | 21 | 19 |
-| axpy 64M | **11.0** | 4.1 | 11.3 |
-| dot 64M | 12.1 | 4.3 | **12.6** |
-(NVPL does not thread level-1/2 either; BLIS-gb10 now ~3× NVPL there.)
+## Non-GEMM — level-1/2 (now multithreaded for gb10; were single-threaded)
+BLIS runs level-1/2 single-threaded by default (so does NVPL). gb10 threads them
+via `BLIS_ENABLE_L1_OPENMP` (axpyv/dotv/scal/copy/asumv/normfv + gemv + ger).
+| op | before | BLIS | NVPL | OpenBLAS |
+|---|---|---|---|---|
+| gemv 8000² (GFLOP/s) | 8.5 | **22** | 22 | 19 |
+| ger 8000² (GFLOP/s) | 7.2 | **17** | — | — |
+| axpy 64M (GFLOP/s) | 4.1 | **11.0** | 4.1 | 11.3 |
+| dot 64M (GFLOP/s) | 4.3 | **12.1** | 4.3 | 12.6 |
+| asum 64M (GB/s) | 15 | **90** | — | — |
+| nrm2 64M (GB/s) | 7.3 | **69** | — | — |
+nrm2 threaded while preserving overflow-safe scaling (verified: 1e200 vector →
+1e203, no overflow). BLIS-gb10 is now ~3–10× NVPL on level-1/2 (NVPL doesn't thread them).
 
 ## Tuning summary (all in the `gb10` config / gated by config macros)
 - NEON 6×8 dgemm / 8×12 sgemm asm kernels, `-mcpu=gb10`, MC=KC=336, NC=4080.
