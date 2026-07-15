@@ -45,7 +45,7 @@ THIS_CONFIG    := gb10
 # NOTE: The build system will append these variables with various
 # general-purpose/configuration-agnostic flags in common.mk. You
 # may specify additional flags here as needed.
-CPPROCFLAGS    := -D_GNU_SOURCE -DBLIS_ENABLE_HUGEPAGE_POOL -DBLIS_SMALL_MT_THRESHOLD=200000
+CPPROCFLAGS    := -D_GNU_SOURCE -DBLIS_ENABLE_HUGEPAGE_POOL -DBLIS_SMALL_MT_THRESHOLD=200000 -DBLIS_SUP_THRESH_ALL
 CMISCFLAGS     :=
 CPICFLAGS      := -fPIC
 CWARNFLAGS     :=
