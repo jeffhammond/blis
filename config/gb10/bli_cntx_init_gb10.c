@@ -48,9 +48,25 @@ void bli_cntx_init_gb10( cntx_t* cntx )
 	(
 	  cntx,
 
-	  // level-3
+	  // level-3 native
 	  BLIS_GEMM_UKR, BLIS_FLOAT,  bli_sgemm_armv8a_asm_8x12,
 	  BLIS_GEMM_UKR, BLIS_DOUBLE, bli_dgemm_armv8a_asm_6x8,
+
+	  // packm (optimized NEON pack kernels matching MR_s=8 / MR_d=6)
+	  BLIS_PACKM_KER, BLIS_FLOAT,  bli_spackm_armv8a_int_8x12,
+	  BLIS_PACKM_KER, BLIS_DOUBLE, bli_dpackm_armv8a_int_6x8,
+
+	  // gemmsup (skinny/unpacked) -- double only; per source-storage combo.
+	  // rv = row-vector (axpy) kernels; rd = row-dot kernels. Suffix m/n picks
+	  // the loop-partition variant. Matches the armv8a 6x8 SUP register tile.
+	  BLIS_GEMMSUP_RRR_UKR, BLIS_DOUBLE, bli_dgemmsup_rv_armv8a_asm_6x8m,
+	  BLIS_GEMMSUP_RRC_UKR, BLIS_DOUBLE, bli_dgemmsup_rd_armv8a_asm_6x8m,
+	  BLIS_GEMMSUP_RCR_UKR, BLIS_DOUBLE, bli_dgemmsup_rv_armv8a_asm_6x8m,
+	  BLIS_GEMMSUP_RCC_UKR, BLIS_DOUBLE, bli_dgemmsup_rv_armv8a_asm_6x8n,
+	  BLIS_GEMMSUP_CRR_UKR, BLIS_DOUBLE, bli_dgemmsup_rv_armv8a_asm_6x8m,
+	  BLIS_GEMMSUP_CRC_UKR, BLIS_DOUBLE, bli_dgemmsup_rd_armv8a_asm_6x8n,
+	  BLIS_GEMMSUP_CCR_UKR, BLIS_DOUBLE, bli_dgemmsup_rv_armv8a_asm_6x8n,
+	  BLIS_GEMMSUP_CCC_UKR, BLIS_DOUBLE, bli_dgemmsup_rv_armv8a_asm_6x8n,
 
 	  BLIS_VA_END
 	);
@@ -60,9 +76,19 @@ void bli_cntx_init_gb10( cntx_t* cntx )
 	(
 	  cntx,
 
-	  // level-3
+	  // level-3 native
 	  BLIS_GEMM_UKR_ROW_PREF, BLIS_FLOAT,  FALSE,
 	  BLIS_GEMM_UKR_ROW_PREF, BLIS_DOUBLE, FALSE,
+
+	  // gemmsup
+	  BLIS_GEMMSUP_RRR_UKR_ROW_PREF, BLIS_DOUBLE, TRUE,
+	  BLIS_GEMMSUP_RRC_UKR_ROW_PREF, BLIS_DOUBLE, TRUE,
+	  BLIS_GEMMSUP_RCR_UKR_ROW_PREF, BLIS_DOUBLE, TRUE,
+	  BLIS_GEMMSUP_RCC_UKR_ROW_PREF, BLIS_DOUBLE, TRUE,
+	  BLIS_GEMMSUP_CRR_UKR_ROW_PREF, BLIS_DOUBLE, TRUE,
+	  BLIS_GEMMSUP_CRC_UKR_ROW_PREF, BLIS_DOUBLE, TRUE,
+	  BLIS_GEMMSUP_CCR_UKR_ROW_PREF, BLIS_DOUBLE, TRUE,
+	  BLIS_GEMMSUP_CCC_UKR_ROW_PREF, BLIS_DOUBLE, TRUE,
 
 	  BLIS_VA_END
 	);
@@ -75,18 +101,48 @@ void bli_cntx_init_gb10( cntx_t* cntx )
 	bli_blksz_init_easy( &blkszs[ BLIS_KC ],   640,   336,    -1,    -1 );
 	bli_blksz_init_easy( &blkszs[ BLIS_NC ],  3072,  4080,    -1,    -1 );
 
+	// SUP thresholds: use the skinny/unpacked path when a dimension is at or
+	// below the threshold (tuned below). s uses the native path (no s SUP kernel).
+	//                                          s     d     c     z
+	bli_blksz_init_easy( &blkszs[ BLIS_MT ],   -1,  256,   -1,   -1 );
+	bli_blksz_init_easy( &blkszs[ BLIS_NT ],   -1,  256,   -1,   -1 );
+	bli_blksz_init_easy( &blkszs[ BLIS_KT ],   -1,  256,   -1,   -1 );
+
+	// Level-3 SUP register/cache blocksizes (double). MR_SUP=6, NR_SUP=8 match
+	// the 6x8 SUP micro-kernels; the second row is the packing multiple.
+	//                                               s      d      c      z
+	bli_blksz_init     ( &blkszs[ BLIS_MR_SUP ],    -1,     6,    -1,    -1,
+	                                                -1,     9,    -1,    -1 );
+	bli_blksz_init     ( &blkszs[ BLIS_NR_SUP ],    -1,     8,    -1,    -1,
+	                                                -1,    13,    -1,    -1 );
+	bli_blksz_init_easy( &blkszs[ BLIS_MC_SUP ],    -1,   240,    -1,    -1 );
+	bli_blksz_init_easy( &blkszs[ BLIS_KC_SUP ],    -1,  1024,    -1,    -1 );
+	bli_blksz_init_easy( &blkszs[ BLIS_NC_SUP ],    -1,  3072,    -1,    -1 );
+
 	// Update the context with the current architecture's register and cache
 	// blocksizes (and multiples) for native execution.
 	bli_cntx_set_blkszs
 	(
 	  cntx,
 
-	  // level-3
+	  // level-3 native
 	  BLIS_NC, &blkszs[ BLIS_NC ], BLIS_NR,
 	  BLIS_KC, &blkszs[ BLIS_KC ], BLIS_KR,
 	  BLIS_MC, &blkszs[ BLIS_MC ], BLIS_MR,
 	  BLIS_NR, &blkszs[ BLIS_NR ], BLIS_NR,
 	  BLIS_MR, &blkszs[ BLIS_MR ], BLIS_MR,
+
+	  // SUP thresholds
+	  BLIS_MT, &blkszs[ BLIS_MT ], BLIS_MT,
+	  BLIS_NT, &blkszs[ BLIS_NT ], BLIS_NT,
+	  BLIS_KT, &blkszs[ BLIS_KT ], BLIS_KT,
+
+	  // level-3 SUP
+	  BLIS_NC_SUP, &blkszs[ BLIS_NC_SUP ], BLIS_NR_SUP,
+	  BLIS_KC_SUP, &blkszs[ BLIS_KC_SUP ], BLIS_KR_SUP,
+	  BLIS_MC_SUP, &blkszs[ BLIS_MC_SUP ], BLIS_MR_SUP,
+	  BLIS_NR_SUP, &blkszs[ BLIS_NR_SUP ], BLIS_NR_SUP,
+	  BLIS_MR_SUP, &blkszs[ BLIS_MR_SUP ], BLIS_MR_SUP,
 
 	  BLIS_VA_END
 	);
