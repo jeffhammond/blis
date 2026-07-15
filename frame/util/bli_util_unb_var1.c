@@ -106,6 +106,45 @@ BLIS_INLINE void bli_util_range( dim_t n, dim_t* s, dim_t* l )
 	BLIS_ASUMV_RANGE( ch, chr, ctype, ctype_r, x, incx, 0, (n), absum )
 #endif
 
+// Threaded sum-of-squares for normfv: run the existing overflow-safe sumsqv
+// kernel on each thread's contiguous chunk (each yields a (scale,sumsq) pair
+// with chunk-sum-of-squares = scale^2 * sumsq), then merge the pairs with the
+// standard LAPACK dlassq combine (rescale to the larger scale -- overflow-safe).
+// (scale,sumsq) must be pre-initialized to (0,1) by the caller, matching the
+// serial kernel's contract. Reuses bli_util_mt_ok/bli_util_range (above).
+#ifdef BLIS_ENABLE_L1_OPENMP
+#define BLIS_SUMSQV_MT( ch, chr, ctype_r, kername, n, x, incx, scale, sumsq, cntx, rntm ) \
+{ \
+	if ( bli_util_mt_ok( n ) ) \
+	{ \
+		ctype_r sc_[ BLIS_L1_MT_MAX ], sq_[ BLIS_L1_MT_MAX ]; dim_t nt_ = 1; \
+		_Pragma( "omp parallel" ) \
+		{ \
+			const dim_t tid_ = omp_get_thread_num(); \
+			dim_t s_, l_; bli_util_range( (n), &s_, &l_ ); \
+			if ( tid_ == 0 ) nt_ = omp_get_num_threads(); \
+			ctype_r lsc_ = ( ctype_r )0, lsq_ = ( ctype_r )1; \
+			PASTEMAC(ch,kername)( l_, (x) + s_*(incx), (incx), &lsc_, &lsq_, (cntx), (rntm) ); \
+			sc_[ tid_ ] = lsc_; sq_[ tid_ ] = lsq_; \
+		} \
+		ctype_r cs_ = ( ctype_r )0, cq_ = ( ctype_r )1; \
+		for ( dim_t t_ = 0; t_ < nt_; ++t_ ) { \
+			const ctype_r as_ = sc_[ t_ ], aq_ = sq_[ t_ ]; \
+			if ( as_ != ( ctype_r )0 ) { \
+				if ( cs_ >= as_ ) { const ctype_r r_ = as_ / cs_; cq_ = cq_ + aq_ * r_ * r_; } \
+				else              { const ctype_r r_ = cs_ / as_; cq_ = aq_ + cq_ * r_ * r_; cs_ = as_; } \
+			} \
+		} \
+		(scale) = cs_; (sumsq) = cq_; \
+	} \
+	else \
+		PASTEMAC(ch,kername)( (n), (x), (incx), &(scale), &(sumsq), (cntx), (rntm) ); \
+}
+#else
+#define BLIS_SUMSQV_MT( ch, chr, ctype_r, kername, n, x, incx, scale, sumsq, cntx, rntm ) \
+	PASTEMAC(ch,kername)( (n), (x), (incx), &(scale), &(sumsq), (cntx), (rntm) )
+#endif
+
 #undef  GENTFUNCR
 #define GENTFUNCR( ctype, ctype_r, ch, chr, varname ) \
 \
@@ -371,15 +410,7 @@ void PASTEMAC(ch,varname) \
 	bli_tcopys( chr,chr, *one,  sumsq ); \
 \
 	/* Compute the sum of the squares of the vector. */ \
-	PASTEMAC(ch,kername) \
-	( \
-	  n, \
-	  x, incx, \
-	  &scale, \
-	  &sumsq, \
-	  cntx, \
-	  rntm  \
-	); \
+	BLIS_SUMSQV_MT( ch, chr, ctype_r, kername, n, x, incx, scale, sumsq, cntx, rntm ); \
 \
 	/* Compute: norm = scale * sqrt( sumsq ) */ \
 	bli_tsqrt2s( chr,chr,chr, sumsq, sqrt_sumsq ); \
@@ -463,15 +494,7 @@ void PASTEMAC(ch,varname) \
 	} \
 \
 	/* Compute the sum of the squares of the vector. */ \
-	PASTEMAC(ch,kername) \
-	( \
-	  n, \
-	  x, incx, \
-	  &scale, \
-	  &sumsq, \
-	  cntx, \
-	  rntm  \
-	); \
+	BLIS_SUMSQV_MT( ch, chr, ctype_r, kername, n, x, incx, scale, sumsq, cntx, rntm ); \
 \
 	/* Compute: norm = scale * sqrt( sumsq ) */ \
 	tsqrt2s( chr, sumsq, sqrt_sumsq ); \
@@ -507,15 +530,7 @@ void PASTEMAC(ch,varname) \
 \
 	/* Compute the sum of the squares of the vector. */ \
 \
-	PASTEMAC(ch,kername) \
-	( \
-	  n, \
-	  x, incx, \
-	  &scale, \
-	  &sumsq, \
-	  cntx, \
-	  rntm  \
-	); \
+	BLIS_SUMSQV_MT( ch, chr, ctype_r, kername, n, x, incx, scale, sumsq, cntx, rntm ); \
 \
 	/* Compute: norm = scale * sqrt( sumsq ) */ \
 	bli_tsqrt2s( chr,chr,chr, sumsq, sqrt_sumsq ); \
