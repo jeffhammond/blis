@@ -6,3 +6,5 @@ fp_peak
 fp_peak_s
 *.o
 perf.txt
+stream
+bench_blis_hp
