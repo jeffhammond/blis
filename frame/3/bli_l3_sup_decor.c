@@ -117,7 +117,9 @@ err_t bli_l3_sup_thread_decorator
 		const uint64_t work = ( uint64_t )bli_obj_length( c ) *
 		                      ( uint64_t )bli_obj_width ( c ) *
 		                      ( uint64_t )bli_obj_width ( a );
-		if ( work < ( uint64_t )( BLIS_SMALL_MT_THRESHOLD ) )
+		uint64_t thresh = ( uint64_t )( BLIS_SMALL_MT_THRESHOLD );
+		if ( bli_obj_is_float( c ) ) thresh *= 8;
+		if ( work < thresh )
 		{
 			bli_rntm_set_ways_only( 1, 1, 1, 1, 1, &rntm_l );
 			bli_rntm_set_num_threads_only( 1, &rntm_l );

@@ -112,7 +112,12 @@ void bli_l3_thread_decorator
 		const uint64_t work = ( uint64_t )bli_obj_length( c ) *
 		                      ( uint64_t )bli_obj_width ( c ) *
 		                      ( uint64_t )bli_obj_width ( a );
-		if ( work < ( uint64_t )( BLIS_SMALL_MT_THRESHOLD ) )
+		// Single-precision real GEMM uses a larger register tile (8x12 vs 6x8),
+		// so small matrices have too few micro-tiles to parallelize well; its
+		// crossover to worthwhile threading is ~8x larger than double's.
+		uint64_t thresh = ( uint64_t )( BLIS_SMALL_MT_THRESHOLD );
+		if ( bli_obj_is_float( c ) ) thresh *= 8;
+		if ( work < thresh )
 		{
 			bli_rntm_set_ways_only( 1, 1, 1, 1, 1, &rntm_l );
 			bli_rntm_set_num_threads_only( 1, &rntm_l );
