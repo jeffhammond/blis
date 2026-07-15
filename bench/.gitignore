@@ -11,3 +11,8 @@ bench_blis_hp
 gemm_fuzz
 l12_fuzz
 l3_fuzz
+arch_a725
+gf_a725
+l12_a725
+ops_a725
+bench_a725

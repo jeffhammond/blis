@@ -1,3 +1,27 @@
+# BLIS configs for NVIDIA GB10 (DGX Spark)
+
+Two sub-configs: **`gb10`** for the 10× Cortex-X925 performance cores (6 FP pipes,
+2 MB L2), **`a725`** for the 10× Cortex-A725 efficiency cores (2 FP pipes, 512 KB L2).
+Build/pin one and affinity-restrict to that cluster.
+
+## a725 — Cortex-A725 cluster (cores 0-4,10-14; DP peak 224, SP peak 448 GFLOP/s)
+Cloned from gb10 (all threading/routing fixes) with blocks resized to the 512 KB L2
+(MC=96, KC=384 for double, swept on-device). Beats NVPL and OpenBLAS for sizes ≥256.
+```
+op                    BLIS-a725   %peak    NVPL   OpenBLAS
+DGEMM 4096              211.9      94.6%   199.4    201.9
+SGEMM 4096              422.8      94.4%     —        —
+syrk  4000              207.9      92.8%   199.3    194.4
+trsm  4000              206.0        —     195.9    205.2
+gemv 8000² / axpy 64M   23.8 / 11.1        23.8/4.0  19.5/11.5   (DRAM-bound, shared with X925)
+dot  64M                12.7                5.1      13.4
+```
+Correctness: 4030-case GEMM fuzz + level-1/2 fuzz pass on the A725 cluster.
+(2 FMA pipes are easier to keep fed than X925's 6, so A725 reaches a *higher*
+% of its own peak — ~95% vs ~84% — though its absolute peak is ~4× lower.)
+
+---
+
 # BLIS `gb10` config — performance on NVIDIA GB10 (DGX Spark), 10× Cortex-X925
 
 All numbers GFLOP/s, pinned to the 10 X925 P-cores (`taskset -c 5-9,15-19`,
