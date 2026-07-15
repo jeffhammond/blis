@@ -112,11 +112,47 @@ BLIS_INLINE void bli_l1v_range( dim_t n, dim_t* start, dim_t* len )
 	else \
 		f( conjx, conjy, (n), ( ctype* )(x), (incx), ( ctype* )(y), (incy), (rho), ( cntx_t* )(cntx) ); \
 }
+
+// copyv/addv/subv: two-vector, disjoint output; split the range.
+#define bli_l1v_copyv_kercall( ch, ctype, f, conjx, n, x, incx, y, incy, cntx ) \
+{ \
+	if ( bli_l1v_mt_ok( n ) ) \
+	{ \
+		_Pragma( "omp parallel" ) \
+		{ \
+			dim_t s_, l_; bli_l1v_range( (n), &s_, &l_ ); \
+			if ( l_ > 0 ) \
+				f( conjx, l_, ( ctype* )(x) + s_*(incx), (incx), (y) + s_*(incy), (incy), ( cntx_t* )(cntx) ); \
+		} \
+	} \
+	else \
+		f( conjx, (n), ( ctype* )(x), (incx), (y), (incy), ( cntx_t* )(cntx) ); \
+}
+
+// scalv/invscalv/setv: single in-place vector, disjoint; split the range.
+#define bli_l1v_scalv_kercall( ch, ctype, f, conjalpha, n, alpha, x, incx, cntx ) \
+{ \
+	if ( bli_l1v_mt_ok( n ) ) \
+	{ \
+		_Pragma( "omp parallel" ) \
+		{ \
+			dim_t s_, l_; bli_l1v_range( (n), &s_, &l_ ); \
+			if ( l_ > 0 ) \
+				f( conjalpha, l_, ( ctype* )(alpha), (x) + s_*(incx), (incx), ( cntx_t* )(cntx) ); \
+		} \
+	} \
+	else \
+		f( conjalpha, (n), ( ctype* )(alpha), (x), (incx), ( cntx_t* )(cntx) ); \
+}
 #else
 #define bli_l1v_axpyv_kercall( ch, ctype, f, conjx, n, alpha, x, incx, y, incy, cntx ) \
 	f( conjx, (n), ( ctype* )(alpha), ( ctype* )(x), (incx), (y), (incy), ( cntx_t* )(cntx) )
 #define bli_l1v_dotv_kercall( ch, ctype, f, conjx, conjy, n, x, incx, y, incy, rho, cntx ) \
 	f( conjx, conjy, (n), ( ctype* )(x), (incx), ( ctype* )(y), (incy), (rho), ( cntx_t* )(cntx) )
+#define bli_l1v_copyv_kercall( ch, ctype, f, conjx, n, x, incx, y, incy, cntx ) \
+	f( conjx, (n), ( ctype* )(x), (incx), (y), (incy), ( cntx_t* )(cntx) )
+#define bli_l1v_scalv_kercall( ch, ctype, f, conjalpha, n, alpha, x, incx, cntx ) \
+	f( conjalpha, (n), ( ctype* )(alpha), (x), (incx), ( cntx_t* )(cntx) )
 #endif
 
 //
@@ -146,14 +182,7 @@ void PASTEMAC(ch,opname,EX_SUF) \
 \
 	PASTECH(opname,_ker_ft) f = bli_cntx_get_ukr_dt( dt, kerid, cntx ); \
 \
-	f \
-	( \
-	  conjx, \
-	  n, \
-	  ( ctype* )x, incx, \
-	            y, incy, \
-	  ( cntx_t* )cntx  \
-	); \
+	bli_l1v_copyv_kercall( ch, ctype, f, conjx, n, x, incx, y, incy, cntx ); \
 }
 
 INSERT_GENTFUNC_BASIC( addv,  BLIS_ADDV_KER )
@@ -397,14 +426,7 @@ void PASTEMAC(ch,opname,EX_SUF) \
 \
 	PASTECH(opname,_ker_ft) f = bli_cntx_get_ukr_dt( dt, kerid, cntx ); \
 \
-	f \
-	( \
-	  conjalpha, \
-	  n, \
-	  ( ctype* )alpha, \
-	            x, incx, \
-	  ( cntx_t* )cntx  \
-	); \
+	bli_l1v_scalv_kercall( ch, ctype, f, conjalpha, n, alpha, x, incx, cntx ); \
 }
 
 INSERT_GENTFUNC_BASIC( invscalv, BLIS_INVSCALV_KER )
