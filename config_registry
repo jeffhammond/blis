@@ -12,7 +12,7 @@ x86_64:         intel64 amd64 amd64_legacy
 intel64:        skx knl haswell sandybridge penryn generic
 amd64_legacy:   excavator steamroller piledriver bulldozer generic
 amd64:          zen3 zen2 zen generic
-arm64:          gb10 armsve firestorm thunderx2 cortexa57 cortexa53 generic
+arm64:          gb10 a725 armsve firestorm thunderx2 cortexa57 cortexa53 generic
 arm32:          cortexa15 cortexa9 generic
 power:          power10 power9 generic
 
@@ -36,8 +36,11 @@ bulldozer:   bulldozer
 armsve:      armsve/armsve
 a64fx:       a64fx/armsve
 
-# ARM Neon64 (4 pipes x 128b) architectures.
+# NVIDIA GB10 Cortex-X925 (6 pipes x 128b) architecture.
 gb10:        gb10/armv8a
+# NVIDIA GB10 Cortex-A725 (2 pipes x 128b) architecture.
+a725:        a725/armv8a
+# ARM Neon64 (4 pipes x 128b) architectures.
 altramax:    altramax/armv8a
 altra:       altra/armv8a
 firestorm:   firestorm/armv8a

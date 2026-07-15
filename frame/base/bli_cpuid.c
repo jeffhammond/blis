@@ -1204,9 +1204,17 @@ static uint32_t get_coretype
 		case ARM_CPU_IMP_ARM:		// ARM
 			switch (part)
 			{
-#ifdef BLIS_CONFIG_GB10
 				// NVIDIA GB10: Cortex-X925 (perf) + Cortex-A725 (eff).
+				// With a dedicated a725 config, the efficiency cores select it;
+				// otherwise both parts fall to gb10.
+#ifdef BLIS_CONFIG_GB10
 				case ARM_CPU_PART_CORTEX_X925:
+					return BLIS_ARCH_GB10;
+#endif
+#ifdef BLIS_CONFIG_A725
+				case ARM_CPU_PART_CORTEX_A725:
+					return BLIS_ARCH_A725;
+#elif defined(BLIS_CONFIG_GB10)
 				case ARM_CPU_PART_CORTEX_A725:
 					return BLIS_ARCH_GB10;
 #endif
