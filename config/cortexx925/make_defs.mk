@@ -45,7 +45,7 @@ THIS_CONFIG    := cortexx925
 # NOTE: The build system will append these variables with various
 # general-purpose/configuration-agnostic flags in common.mk. You
 # may specify additional flags here as needed.
-CPPROCFLAGS    := -D_GNU_SOURCE -DBLIS_ENABLE_HUGEPAGE_POOL -DBLIS_SMALL_MT_THRESHOLD=200000 -DBLIS_SUP_THRESH_ALL -DBLIS_ENABLE_L1_OPENMP
+CPPROCFLAGS    := -D_GNU_SOURCE  # GB10 framework tunings enabled in bli_config_macro_defs.h
 CMISCFLAGS     :=
 CPICFLAGS      := -fPIC
 CWARNFLAGS     :=

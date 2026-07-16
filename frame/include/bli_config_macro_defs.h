@@ -278,5 +278,29 @@
 #endif
 
 
+// -- NVIDIA GB10 (Cortex-X925 / Cortex-A725) framework tunings ----------------
+
+// Enable the GB10 framework features whenever a GB10 sub-config is part of the
+// build. These are gated on BLIS_CONFIG_* (from the generated bli_config.h),
+// NOT on the sub-config's CPPROCFLAGS, because the shared frame/ sources are
+// compiled with the umbrella's flags in a multi-config build (e.g. arm64) --
+// so CPPROCFLAGS-based gating would silently disable them there. Keying off
+// bli_config.h makes them active in single-config and umbrella builds alike.
+#if defined(BLIS_CONFIG_CORTEXX925) || defined(BLIS_CONFIG_CORTEXA725)
+  #ifndef BLIS_ENABLE_L1_OPENMP
+  #define BLIS_ENABLE_L1_OPENMP
+  #endif
+  #ifndef BLIS_SUP_THRESH_ALL
+  #define BLIS_SUP_THRESH_ALL
+  #endif
+  #ifndef BLIS_SMALL_MT_THRESHOLD
+  #define BLIS_SMALL_MT_THRESHOLD 200000
+  #endif
+  #ifndef BLIS_ENABLE_HUGEPAGE_POOL
+  #define BLIS_ENABLE_HUGEPAGE_POOL
+  #endif
+#endif
+
+
 #endif
 
