@@ -765,8 +765,6 @@ siz_t bli_thread_range_ndim
 
 #ifdef BLIS_ENABLE_HETERO_SCHED
 
-#include <math.h>   // exp()
-
 // Heterogeneous (weighted-static) work partitioning. On GB10 the 10 Cortex-X925
 // performance cores are ~3.6x faster than the 10 Cortex-A725 efficiency cores;
 // an equal static split makes the fast cores idle at every barrier waiting for
@@ -785,34 +783,33 @@ static bool bli_hetero_is_x925( dim_t id )
 	return ( id >= 5 && id <= 9 ) || ( id >= 15 && id <= 19 );
 }
 
-// Per-GEMM arithmetic intensity flop/byte = mnk / (mn+mk+nk), set by the
-// level-3 decorator from the global (m,n,k) before threads launch.
-double bli_gemm_hetero_ai = 0.0;
-
-// The X925:A725 throughput weight for the current problem. The ratio is not
-// constant: it is ~R_max when compute-bound but falls toward 1 as the problem
-// becomes memory-bound (both clusters share DRAM), well modeled by
-//   w(AI) = R_max * ( 1 - exp( -AI / AI0 ) )
-// fit to measured per-cluster GEMM throughput (R_max~3.6, AI0~23 on GB10).
+// The X925:A725 work weight. This path is used only by level-3 ops (GEMM and
+// friends), which have data reuse, and there the perf-optimal weight is
+// ~constant across shapes -- NOT the arithmetic-intensity-scaled value one
+// might expect. Although the *solo* per-cluster throughput ratio falls from
+// ~3.6 (compute-bound) toward ~2.7 for memory-bound rank-k, the optimal weight
+// for CONCURRENT execution stays ~3.6 at every shape measured (a flat 3.6 beats
+// an AI-scaled weight even at m=n=8192, k=4). The reason: X925's larger caches
+// and 6 FP pipes convert the *shared* memory bandwidth into useful work more
+// efficiently, so loading it heavily wins even when the shape looks memory-
+// bound. Reuse -- not single-pass AI -- is what matters.
+//
+// Streaming level-1/2 ops (gemv, axpy, dot, ...) are the opposite case: no
+// reuse, pure DRAM bandwidth, X925:A725 per-core ratio ~1.0-1.1 (measured). For
+// them the correct weight is ~1, i.e. plain equal partitioning -- which is
+// exactly what they already use (their OpenMP splits don't call this function).
+//
 // R_max (== the env var BLIS_HETERO_WEIGHT) also serves as the enable switch:
 // <= 1 means disabled (fall back to the equal static split).
 static double bli_hetero_weight( void )
 {
-	static double rmax = -2.0;
-	static double ai0  = 23.0;
-	if ( rmax < -1.0 )
+	static double w = -2.0;
+	if ( w < -1.0 )
 	{
-		const char* e  = getenv( "BLIS_HETERO_WEIGHT" );
-		const char* e0 = getenv( "BLIS_HETERO_AI0" );
-		rmax = ( e  != NULL ) ? atof( e  ) : 1.0;
-		if   ( e0 != NULL )     ai0  = atof( e0 );
-		if ( ai0 <= 0.0 ) ai0 = 23.0;
+		const char* e = getenv( "BLIS_HETERO_WEIGHT" );
+		w = ( e != NULL ) ? atof( e ) : 1.0;
 	}
-	if ( rmax <= 1.0 ) return rmax;                 // disabled
-	const double ai = bli_gemm_hetero_ai;
-	if ( ai <= 0.0 ) return rmax;                   // no shape info: assume compute-bound
-	const double w = rmax * ( 1.0 - exp( -ai / ai0 ) );
-	return ( w < 1.0 ) ? 1.0 : w;
+	return w;
 }
 
 // Weighted analogue of bli_thread_range_sub for the forward, dense case: split
