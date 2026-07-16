@@ -59,6 +59,15 @@ BLIS_INLINE bool bli_l1v_mt_ok( dim_t n )
 	       ( omp_get_active_level() == 0 ) &&
 	       ( omp_get_max_threads() <= BLIS_L1_MT_MAX );
 }
+// Contiguous [start,len) sub-range for the calling thread. This is a plain
+// EQUAL split, and that is deliberate on heterogeneous machines (e.g. GB10's
+// mixed Cortex-X925 + Cortex-A725 clusters): these level-1v ops are pure
+// streaming with no data reuse, so they are limited by memory bandwidth, not
+// compute. The measured X925:A725 per-core throughput is ~1.0-1.1 (single-core
+// axpy 1.04, STREAM 45 vs 40 GB/s), so equal work per thread IS the balanced
+// split. This is the opposite of level-3 GEMM, whose reuse lets the X925 cores
+// do ~3.6x the work and which therefore uses a weighted split -- see
+// bli_hetero_weight() in frame/thread/bli_thread_range.c.
 BLIS_INLINE void bli_l1v_range( dim_t n, dim_t* start, dim_t* len )
 {
 	const dim_t nt   = omp_get_num_threads();
