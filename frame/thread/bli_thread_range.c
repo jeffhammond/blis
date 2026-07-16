@@ -763,6 +763,80 @@ siz_t bli_thread_range_ndim
 
 // -----------------------------------------------------------------------------
 
+#ifdef BLIS_ENABLE_HETERO_SCHED
+
+// Heterogeneous (weighted-static) work partitioning. On GB10 the 10 Cortex-X925
+// performance cores are ~3.6x faster than the 10 Cortex-A725 efficiency cores;
+// an equal static split makes the fast cores idle at every barrier waiting for
+// the slow ones. Instead we hand each thread a share of the loop proportional
+// to its core's throughput, so all threads finish each phase together.
+//
+// PROTOTYPE scope: assumes the group's BLIS work_id equals the logical CPU it
+// runs on -- true for the pinned all-20 case (taskset -c 0-19, OMP_PROC_BIND=
+// close, 1D IC parallelism). Activated only when BLIS_HETERO_WEIGHT (> 1) is
+// set. A production version would derive per-work_id weights from sched_getcpu()
+// gathered through the thread communicator, so it holds for any factorization.
+
+// GB10 Cortex-X925 logical CPUs (== work_id under the pinned all-20 layout).
+static bool bli_hetero_is_x925( dim_t id )
+{
+	return ( id >= 5 && id <= 9 ) || ( id >= 15 && id <= 19 );
+}
+
+// The X925:A725 throughput weight, cached from the environment. Returns <= 1 to
+// mean "disabled" (fall back to the equal static split).
+static double bli_hetero_weight( void )
+{
+	static double w = -2.0;
+	if ( w < -1.0 )
+	{
+		const char* e = getenv( "BLIS_HETERO_WEIGHT" );
+		w = ( e != NULL ) ? atof( e ) : 1.0;
+	}
+	return w;
+}
+
+// Weighted analogue of bli_thread_range_sub for the forward, dense case: split
+// [0,n) into n_way bf-aligned partitions with widths proportional to each
+// work_id's core weight. Exact tiling: partition k's end = round(cumw(k)/total
+// * n_bf)*bf, so partitions abut and the last one absorbs the bf remainder.
+static void bli_thread_range_hetero_sub
+     (
+       dim_t  work_id,
+       dim_t  n_way,
+       dim_t  n,
+       dim_t  bf,
+       double xw,
+       dim_t* start,
+       dim_t* end
+     )
+{
+	const dim_t n_bf = n / bf;
+	const dim_t rem  = n % bf;
+
+	double total = 0.0;
+	for ( dim_t j = 0; j < n_way; ++j )
+		total += bli_hetero_is_x925( j ) ? xw : 1.0;
+
+	// Cumulative weight up to (but not including) partition k.
+	double cum = 0.0;
+	dim_t  s_bf = 0;
+	for ( dim_t k = 0; k <= work_id; ++k )
+	{
+		if ( k == work_id ) s_bf = ( dim_t )( cum / total * n_bf + 0.5 );
+		cum += bli_hetero_is_x925( k ) ? xw : 1.0;
+	}
+	const dim_t e_bf = ( dim_t )( cum / total * n_bf + 0.5 );
+
+	*start = s_bf * bf;
+	*end   = e_bf * bf;
+
+	// The highest-indexed partition absorbs the sub-bf edge remainder.
+	if ( work_id == n_way - 1 ) *end = n; ( void )rem;
+}
+
+#endif // BLIS_ENABLE_HETERO_SCHED
+
 siz_t bli_thread_range
      (
        const thrinfo_t* thr,
@@ -808,10 +882,24 @@ siz_t bli_thread_range
 	}
 	else // if unweighted, dense, or zeros
 	{
+		const dim_t work_id = bli_thrinfo_work_id( thr );
+		const dim_t n_way   = bli_thrinfo_n_way( thr );
+
+#ifdef BLIS_ENABLE_HETERO_SCHED
+		// Weighted-static split across heterogeneous cores (forward only), when
+		// BLIS_HETERO_WEIGHT > 1 is set and the loop is actually parallel.
+		const double xw = bli_hetero_weight();
+		if ( xw > 1.0 && n_way > 1 && !handle_edge_low )
+		{
+			bli_thread_range_hetero_sub( work_id, n_way, n, bf, xw, start, end );
+			return m * ( *end - *start );
+		}
+#endif
+
 		bli_thread_range_sub
 		(
-		  bli_thrinfo_work_id( thr ),
-		  bli_thrinfo_n_way( thr ),
+		  work_id,
+		  n_way,
 		  n,
 		  bf,
 		  handle_edge_low,

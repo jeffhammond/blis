@@ -299,6 +299,12 @@
   #ifndef BLIS_ENABLE_HUGEPAGE_POOL
   #define BLIS_ENABLE_HUGEPAGE_POOL
   #endif
+  // Heterogeneous (weighted-static) work partitioning for GB10's mixed X925/
+  // A725 clusters. Compiled in but activated at runtime via BLIS_HETERO_WEIGHT
+  // (the X925:A725 throughput ratio); requires thread pinning.
+  #ifndef BLIS_ENABLE_HETERO_SCHED
+  #define BLIS_ENABLE_HETERO_SCHED
+  #endif
 #endif
 
 
