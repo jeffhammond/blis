@@ -125,6 +125,21 @@ void bli_l3_thread_decorator
 	}
 #endif
 
+#ifdef BLIS_ENABLE_HETERO_SCHED
+	// Publish this problem's arithmetic intensity (flop/byte, single-pass) so the
+	// weighted-static partitioner can scale the X925:A725 weight from the
+	// compute-bound ratio toward 1 as the problem becomes memory-bound. Set
+	// before threads launch (happens-before the readers); see bli_hetero_weight().
+	{
+		extern double bli_gemm_hetero_ai;
+		const double M = ( double )bli_obj_length( c );
+		const double N = ( double )bli_obj_width ( c );
+		const double K = ( double )bli_obj_width ( a );
+		const double denom = M*N + M*K + N*K;
+		bli_gemm_hetero_ai = ( denom > 0.0 ) ? ( M*N*K ) / denom : 0.0;
+	}
+#endif
+
 	// Set the number of ways for each loop, if needed, depending on what
 	// kind of information is already stored in the rntm_t object.
 	bli_rntm_factorize
