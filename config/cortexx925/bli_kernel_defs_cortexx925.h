@@ -4,8 +4,7 @@
    An object-based framework for developing high-performance BLAS-like
    libraries.
 
-   Copyright (C) 2014, The University of Texas at Austin
-   Copyright (C) 2018 - 2019, Advanced Micro Devices, Inc.
+   Copyright (C) 2022, The University of Texas at Austin
 
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are
@@ -33,38 +32,17 @@
 
 */
 
-// Typedef function pointer types for malloc() and free() substitutes.
-//typedef void* (*malloc_ft) ( size_t size );
-//typedef void  (*free_ft)   ( void*  p    );
+//#ifndef BLIS_KERNEL_DEFS_H
+//#define BLIS_KERNEL_DEFS_H
 
-// -----------------------------------------------------------------------------
 
-#if 0
-BLIS_EXPORT_BLIS void* bli_malloc_pool( size_t size );
-BLIS_EXPORT_BLIS void   bli_free_pool( void* p );
-#endif
+// -- REGISTER BLOCK SIZES (FOR REFERENCE KERNELS) ----------------------------
 
-void* bli_malloc_intl( size_t size, err_t* r_val );
-void* bli_calloc_intl( size_t size, err_t* r_val );
-void  bli_free_intl( void* p );
+#define BLIS_MR_s   8
+#define BLIS_MR_d   6
 
-BLIS_EXPORT_BLIS void* bli_malloc_user( size_t size, err_t* r_val );
-BLIS_EXPORT_BLIS void  bli_free_user( void* p );
+#define BLIS_NR_s   12
+#define BLIS_NR_d   8
 
-// -----------------------------------------------------------------------------
-
-void* bli_fmalloc_align( malloc_ft f, size_t size, size_t align_size, err_t* r_val );
-void  bli_ffree_align( free_ft f, void* p );
-
-void* bli_fmalloc_noalign( malloc_ft f, size_t size, err_t* r_val );
-void  bli_ffree_noalign( free_ft f, void* p );
-
-#ifdef BLIS_ENABLE_HUGEPAGE_POOL
-// Huge-page-backed pool allocator (see bli_malloc.c). malloc()/free()-compatible.
-void* bli_hugepage_malloc( size_t size );
-void  bli_hugepage_free  ( void*  p    );
-#endif
-
-void  bli_fmalloc_align_check( malloc_ft f, size_t size, size_t align_size );
-void  bli_fmalloc_post_check( void* p );
+//#endif
 
