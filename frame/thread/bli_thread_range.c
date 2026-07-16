@@ -765,6 +765,8 @@ siz_t bli_thread_range_ndim
 
 #ifdef BLIS_ENABLE_HETERO_SCHED
 
+#include <string.h>   // strcmp()
+
 // Heterogeneous (weighted-static) work partitioning. On GB10 the 10 Cortex-X925
 // performance cores are ~3.6x faster than the 10 Cortex-A725 efficiency cores;
 // an equal static split makes the fast cores idle at every barrier waiting for
@@ -799,17 +801,37 @@ static bool bli_hetero_is_x925( dim_t id )
 // them the correct weight is ~1, i.e. plain equal partitioning -- which is
 // exactly what they already use (their OpenMP splits don't call this function).
 //
-// R_max (== the env var BLIS_HETERO_WEIGHT) also serves as the enable switch:
-// <= 1 means disabled (fall back to the equal static split).
-static double bli_hetero_weight( void )
+// The weight is per datatype: the X925:A725 compute-throughput ratio is ~4.0
+// (the FMA-peak ratio: 6 pipes x 3.9 GHz vs 2 pipes x 2.8 GHz), but the
+// perf-optimal weight is adjusted by each datatype's achieved efficiency and
+// was measured on GB10 (all-20 GEMM, weight sweep):
+//   s 4.2   d 3.6   c 4.0   z 4.4   (c/z use reference micro-kernels here)
+//
+// Control via the env var BLIS_HETERO_WEIGHT (also the enable switch):
+//   unset or <= 1  -> disabled (equal static split);
+//   "auto"         -> the per-datatype weights above;
+//   a number > 1   -> that fixed weight for all datatypes (for experiments).
+static double bli_hetero_weight( num_t dt )
 {
-	static double w = -2.0;
-	if ( w < -1.0 )
+	static double mode = -3.0;   // -3 uninit, -1 disabled, -2 auto, >1 fixed
+	if ( mode < -2.5 )
 	{
 		const char* e = getenv( "BLIS_HETERO_WEIGHT" );
-		w = ( e != NULL ) ? atof( e ) : 1.0;
+		if      ( e == NULL )                mode = -1.0;
+		else if ( strcmp( e, "auto" ) == 0 ) mode = -2.0;
+		else { const double v = atof( e ); mode = ( v > 1.0 ) ? v : -1.0; }
 	}
-	return w;
+	if ( mode == -1.0 ) return 1.0;    // disabled -> equal split
+	if ( mode  >  1.0 ) return mode;   // fixed override for all datatypes
+
+	switch ( dt )                      // mode == -2.0: per-datatype defaults
+	{
+		case BLIS_FLOAT:    return 4.2;
+		case BLIS_DOUBLE:   return 3.6;
+		case BLIS_SCOMPLEX: return 4.0;
+		case BLIS_DCOMPLEX: return 4.4;
+		default:            return 3.6;
+	}
 }
 
 // Weighted analogue of bli_thread_range_sub for the forward, dense case: split
@@ -903,8 +925,8 @@ siz_t bli_thread_range
 
 #ifdef BLIS_ENABLE_HETERO_SCHED
 		// Weighted-static split across heterogeneous cores (forward only), when
-		// BLIS_HETERO_WEIGHT > 1 is set and the loop is actually parallel.
-		const double xw = bli_hetero_weight();
+		// enabled and the loop is actually parallel. Weight is per datatype.
+		const double xw = bli_hetero_weight( bli_obj_dt( a ) );
 		if ( xw > 1.0 && n_way > 1 && !handle_edge_low )
 		{
 			bli_thread_range_hetero_sub( work_id, n_way, n, bf, xw, start, end );
